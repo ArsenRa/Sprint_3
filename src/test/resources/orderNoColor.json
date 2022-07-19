@@ -1,0 +1,11 @@
+{
+  "firstName": "Ned",
+  "lastName": "Flanders",
+  "address": "Evergreen Terrace, 774 apt.",
+  "metroStation": 4,
+  "phone": "+7 636 555 89 04",
+  "rentTime": 5,
+  "deliveryDate": "2020-07-07",
+  "comment": "Okily Dokily!",
+  "color": []
+}
