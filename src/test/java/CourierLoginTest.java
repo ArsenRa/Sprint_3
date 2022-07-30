@@ -1,150 +1,84 @@
 import POJO.CourierCreate;
 import POJO.CourierLogin;
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import org.hamcrest.Matchers;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import Praktikum.Courier;
+import ScooterApi.CourierClient;
+import io.restassured.response.ValidatableResponse;
+import org.junit.*;
 
-import static io.restassured.RestAssured.given;
 import static org.apache.http.HttpStatus.*;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static ScooterApi.ApiClient.*;
+import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
 
 public class CourierLoginTest {
-    static Integer id;
+    CourierClient courierClient;
+    Courier courier;
+    int courierId;
 
-    @BeforeClass
-    public static void createCourierBefore() {
-        CourierCreate courierCreate  = new CourierCreate("Donut", "12345", "Homer");
-        given()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .log().all()
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .log().all()
-                .statusCode(SC_CREATED);
-    }
-    @AfterClass
-    public static void deleteCourierAfter() {
-        String idCourier = Integer.toString(id);
-        RestAssured.with()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .log().all()
-                .delete("http://qa-scooter.praktikum-services.ru/api/v1/courier/{idCourier}", idCourier)
-                .then()
-                .statusCode(SC_OK);
+    @Before
+    public void setUp(){
+        courierClient = new CourierClient();
+        courier = CourierCreate.getRandomCourier();
+        courierClient.create(courier);
     }
 
-    @Test
+    @After
+    public void tearDown() throws Exception{
+        courierClient.delete(courierId);
+    }
+
+   @Test
     public void courierLoginWithValidDataTest() {
-        CourierLogin courierLogin = new CourierLogin("Donut", "12345");
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .log().all()
-                .body(courierLogin)
-                .post(LOGIN);
+       ValidatableResponse loginResponse = courierClient.login(courier.getCredentials());
+       int statusCode = loginResponse.log().all().extract().statusCode();
+       courierId = loginResponse.log().all().extract().path("id");
 
-        response.then().log().all().assertThat().body("id", notNullValue()).and().statusCode(SC_OK);
-    }
-
-    @Test
-    public void courierLoginWhithValidIDTest() {
-        CourierLogin courierLogin = new CourierLogin("Donut", "12345");
-        id = given()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .log().all()
-                .body(courierLogin)
-                .when()
-                .post(LOGIN)
-                .then()
-                .log().all()
-                .assertThat()
-                .body("id", notNullValue())
-                .and()
-                .statusCode(SC_OK)
-                .extract()
-                .body()
-                .path("id");
+       assertThat("200", statusCode, equalTo(SC_OK));
+       assertThat("id", courierId, greaterThan(0));
     }
 
     //тест с дефектом
     @Test
     public void courierLoginWhithOnlyLoginTest() {
-        CourierLogin courierLogin = new CourierLogin("Donut", null);
-        given()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .log().all()
-                .body(courierLogin)
-                .post(LOGIN)
-                .then()
-                .log().all()
-                .assertThat()
-                .statusCode(SC_BAD_REQUEST)
-                .and()
-                .body("message",Matchers.is("Недостаточно данных для входа"));
+        CourierLogin credentialsWithoutLogin = courier.getCredentials();
+        credentialsWithoutLogin.setLogin(null);
+        ValidatableResponse loginResponse = courierClient.login(credentialsWithoutLogin);
+        int statusCode = loginResponse.extract().statusCode();
+
+        assertThat("200", statusCode, not(equalTo(SC_OK)));
+        assertThat("Недостаточно данных для входа", statusCode, equalTo(SC_BAD_REQUEST));
     }
 
     @Test
     public void courierLoginWithOnlyPasswordTest() {
-        CourierLogin courierLogin = new CourierLogin(null, "EMS01");
-        given()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .log().all()
-                .body(courierLogin)
-                .when()
-                .post(LOGIN)
-                .then()
-                .log().all()
-                .statusCode(SC_BAD_REQUEST)
-                .assertThat()
-                .and()
-                .body("message", Matchers.is("Недостаточно данных для входа"));
+        CourierLogin credentialsWithoutPassword = courier.getCredentials();
+        credentialsWithoutPassword.setPassword(null);
+        ValidatableResponse loginResponse = courierClient.login(credentialsWithoutPassword);
+        int statusCode = loginResponse.extract().statusCode();
+
+        assertThat("200", statusCode, not(equalTo(SC_OK)));
+        assertThat("Недостаточно данных для входа", statusCode, equalTo(SC_BAD_REQUEST));
     }
 
     @Test
     public void courierLoginWhithoutAccountTest() {
-        CourierLogin courierLogin = new CourierLogin("Lisa", "Jazz");
-        given()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .log().all()
-                .body(courierLogin)
-                .when()
-                .post(LOGIN)
-                .then()
-                .log().all()
-                .assertThat()
-                .statusCode(SC_NOT_FOUND)
-                .and()
-                .body("message", Matchers.is("Учетная запись не найдена"));
+        courier = CourierCreate.getRandomCourier();
+        ValidatableResponse loginResponse = courierClient.login(courier.getCredentials());
+        int statusCode = loginResponse.extract().statusCode();
+
+        //assertThat("404", statusCode, not(equalTo(SC_OK)));
+        assertThat("Учетная запись не найдена", statusCode, equalTo(SC_NOT_FOUND));
     }
 
     @Test
     public void courierWrongLoginAndPasswordTest() {
-        CourierLogin courierLogin = new CourierLogin("Nelson", "EMS01");
-        given()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .log().all()
-                .body(courierLogin)
-                .post(LOGIN)
-                .then()
-                .log().all()
-                .assertThat()
-                .statusCode(SC_NOT_FOUND)
-                .and()
-                .body("message", Matchers.is("Учетная запись не найдена"));
+        CourierLogin credentialsWrongPasswordAndLogin = courier.getCredentials();
+        credentialsWrongPasswordAndLogin.setPassword("Nelson");
+        credentialsWrongPasswordAndLogin.setPassword("1233409");
+        ValidatableResponse loginResponse = courierClient.login(credentialsWrongPasswordAndLogin);
+        int statusCode = loginResponse.extract().statusCode();
+
+        assertThat("Учетная запись не найдена", statusCode, equalTo(SC_NOT_FOUND));
     }
 
 }

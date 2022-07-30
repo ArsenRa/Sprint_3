@@ -1,6 +1,8 @@
 package POJO;
 
-public class CourierLogin {
+import Praktikum.Courier;
+
+public class CourierLogin{
 
     private String login;
     private String password;
@@ -29,4 +31,11 @@ public class CourierLogin {
         this.password = password;
     }
 
+    @Override
+    public String toString() {
+        return "CourierLogin{" +
+                "login='" + login + '\'' +
+                ", password='" + password + '\'' +
+                '}';
+    }
 }

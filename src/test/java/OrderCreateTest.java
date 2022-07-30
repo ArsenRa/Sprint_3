@@ -1,50 +1,55 @@
+import Praktikum.Order;
+import ScooterApi.OrderClient;
 
-import io.restassured.http.ContentType;
 
+import io.restassured.response.ValidatableResponse;
+import org.junit.Before;
 import org.junit.Test;
+import static org.hamcrest.Matchers.*;
+import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import java.io.File;
 
-import static io.restassured.RestAssured.baseURI;
-import static io.restassured.RestAssured.given;
-import static org.apache.http.HttpStatus.SC_CREATED;
-
-import static org.hamcrest.Matchers.notNullValue;
-import static ScooterApi.ApiClient.*;
 
 @RunWith(Parameterized.class)
 public class OrderCreateTest {
-    File json;
+    private final String[] color;
+    private OrderClient orderClient;
+    private Order order;
+    private int expectedStatusCode;
 
-    public OrderCreateTest(File json){
-        this.json = json;
+    public OrderCreateTest(String[] color, int expectedStatusCode) {
+        this.color = color;
+        this.expectedStatusCode = expectedStatusCode;
     }
 
 
     @Parameterized.Parameters
-    public static Object[] getSumDate(){
+    public static Object[][] getColorData() {
         return new Object[][] {
-                {new File("src/test/resources/orderBlackColor.json")},
-                {new File("src/test/resources/orderTwoColors.json")},
-                {new File("src/test/resources/orderNoColor.json")}
+                {new String[]{"BLACK"}, 201},
+                {new String[]{"CREY"}, 201},
+                {new String[]{"CREY", "BLACK"}, 201},
+                {new String[]{""}, 201}
         };
     }
 
-    @Test
-    public void createNewOrderTest(){
+    @Before
+    public void setUp(){
+        orderClient = new OrderClient();
+        order = Order.getRandomOrder();
+        order.setColor(color);
+    }
 
-                given()
-                        .contentType(ContentType.JSON)
-                        .log().all()
-                        .body(json)
-                        .when()
-                        .post(BASE_URL + ORDER)
-                        .then()
-                        .assertThat()
-                        .body("track", notNullValue())
-                        .and()
-                        .statusCode(SC_CREATED);
+    @Test
+    public void createOrderValidTest() {
+
+        ValidatableResponse createResponse = orderClient.create(order);
+        int statusCode = createResponse.extract().statusCode();
+        int track = createResponse.extract().path("track");
+
+        assertThat("Order is not created", statusCode, equalTo(expectedStatusCode));
+        assertThat("No track number in response", track, greaterThan(0));
 
     }
 }

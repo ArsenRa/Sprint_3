@@ -1,5 +1,7 @@
 package Praktikum;
 
+
+import POJO.CourierLogin;
 import org.apache.commons.lang3.RandomStringUtils;
 
 public class Courier {
@@ -14,28 +16,6 @@ public class Courier {
         this.firstName = firstName;
     }
 
-    public static Courier getCreateRandomCourier(){
-        String login = RandomStringUtils.randomAlphabetic(6);
-        String password = RandomStringUtils.randomAlphabetic(5);
-        String firstName = RandomStringUtils.randomAlphabetic(7);
-        return new Courier(login, password, firstName);
-    }
-
-    public static Courier getCreateRandomCourierWithEmptyFields(){
-        return new Courier(null, null, null);
-    }
-
-    public static Courier getRandomCourierNoLogin(){
-        String password = RandomStringUtils.randomAlphabetic(5);
-        String firstName = RandomStringUtils.randomAlphabetic(7);
-        return new Courier(null, password, firstName);
-    }
-
-    public static Courier getRandomCourierWithSameLogin(){
-        String login = RandomStringUtils.randomAlphabetic(6);
-        String password = RandomStringUtils.randomAlphabetic(5);
-        return new Courier(login, password, null);
-    }
     public Courier(){
 
     }
@@ -61,5 +41,9 @@ public class Courier {
 
     public void setFirstName(String firstName) {
         this.firstName = firstName;
+    }
+
+    public CourierLogin getCredentials (){
+        return new CourierLogin(login,password);
     }
 }

@@ -1,167 +1,57 @@
 import POJO.CourierCreate;
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import org.hamcrest.Matchers;
-import org.junit.AfterClass;
-import org.junit.Test;
+import Praktikum.Courier;
+import ScooterApi.CourierClient;
+import io.restassured.response.ValidatableResponse;
+import org.junit.*;
 
-import static io.restassured.RestAssured.given;
 import static org.apache.http.HttpStatus.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static ScooterApi.ApiClient.BASE_URL;
-import static ScooterApi.ApiClient.COURIER;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 
 public class CourierCreateTest {
-    static Integer id;
+    CourierClient courierClient;
+    Courier courier;
+    int courierId;
+    int statusCode;
 
-    @AfterClass
-    public static void deleteCourierAfter() {
-        String idCourier = Integer.toString(id);
-        RestAssured.with()
-                .contentType(ContentType.JSON)
-                .log().all()
-                .delete("http://qa-scooter.praktikum-services.ru/api/v1/courier/{idCourier}", idCourier)
-                .then()
-                .statusCode(SC_OK);
+    @Before
+    public void setUp(){
+        courierClient = new CourierClient();
+        courier = CourierCreate.getRandomCourier();
     }
 
-    @Test
-    public void createTwoCouriersWithSameCredentialsTest(){
-        CourierCreate courierCreate = CourierCreate.getRandomCourier();
-        given()
-                .log().all()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .log().all()
-                .statusCode(SC_CREATED);
-        given()
-                .log().all()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .log().all()
-                .statusCode(SC_CONFLICT)
-                .and()
-                .body("message", Matchers.is("Этот логин уже используется. Попробуйте другой."));
-    }
-
-    @Test
-    public void createTwoSameLoginTest(){
-        CourierCreate courierCreate = CourierCreate.getRandomCourier();
-        given()
-                .log().all()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .log().all()
-                .statusCode(SC_CREATED);
-        given()
-                .log().all()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .log().all()
-                .statusCode(SC_CONFLICT)
-                .and()
-                .body("message", Matchers.is("Этот логин уже используется. Попробуйте другой."));
-    }
-
-    @Test
-    public void createWithoutFilledFieldsTest(){
-        CourierCreate courierCreate = new CourierCreate(null, null, null);
-        String error = "Недостаточно данных для создания учетной записи";
-        String response = given()
-                .log().all()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .log().all()
-                .statusCode(SC_BAD_REQUEST)
-                .extract()
-                .path("message");
-        assertEquals(error, response);
+    @After
+    public void tearDown(){
+        courierId = courierClient.login(courier.getCredentials()).extract().path("id");
+        courierClient.delete(courierId);
     }
 
     @Test
     public void createCourierRetrunTrueTest(){
-        CourierCreate courierCreate = CourierCreate.getRandomCourier();
-        boolean ok = given()
-                .log().all()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .statusCode(SC_CREATED)
-                .extract()
-                .path("ok");
-        assertTrue(ok);
+        ValidatableResponse createResponse = courierClient.create(courier);
+        boolean responseOk = createResponse.log().all().extract().path("ok");
+
+        assertThat("true", responseOk, equalTo(true));
     }
 
     @Test
     public void createCourierRetrun201Test(){
-        CourierCreate courierCreate = CourierCreate.getRandomCourier();
-        given()
-                .log().all()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .statusCode(201);
+         ValidatableResponse createResponse = courierClient.create(courier);
+        int statusCode = createResponse.log().all().extract().statusCode();
+        boolean responseOk = createResponse.log().all().extract().path("ok");
+
+        assertThat("201", statusCode, equalTo(SC_CREATED));
+        assertThat("true", responseOk, equalTo(true));
     }
 
     @Test
-    public void createCourierWithRetur200Test() {
-        CourierCreate courierCreate = CourierCreate.getRandomCourier();
-        given()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .log().all()
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .log().all()
-                .statusCode(SC_CREATED)
-                .and()
-                .body("ok", Matchers.is(true));
-    }
+    public void createCourierWithReturn200Test() {
+         ValidatableResponse createResponse = courierClient.create(courier);
+        int statusCode = createResponse.log().all().extract().statusCode();
 
-    @Test
-    public void createCourierWithoutLoginTest() {
-        CourierCreate courierCreate = CourierCreate.getRandomCourierWithoutLogin();
-        given()
-                .log().all()
-                .contentType(ContentType.JSON)
-                .baseUri(BASE_URL)
-                .body(courierCreate)
-                .when()
-                .post(COURIER)
-                .then()
-                .log().all()
-                .statusCode(SC_BAD_REQUEST)
-                .and()
-                .body("message",Matchers.is( "Недостаточно данных для создания учетной записи"));
+        assertThat("200", statusCode, equalTo(SC_CREATED));
+
     }
 
 }
