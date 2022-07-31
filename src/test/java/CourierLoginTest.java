@@ -23,7 +23,8 @@ public class CourierLoginTest {
     }
 
     @After
-    public void tearDown() throws Exception{
+    public void tearDown() throws Exception
+    {
         courierClient.delete(courierId);
     }
 
